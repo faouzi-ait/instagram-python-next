@@ -1,0 +1,15 @@
+pre-commit:
+  jobs:
+    - name: prettier
+      glob: "*.{js,jsx,ts,tsx,mjs,cjs,css,json,md,mdx,yml,yaml}"
+      run: npx prettier --check {staged_files}
+
+    - name: eslint
+      glob: "*.{js,jsx,ts,tsx,mjs,cjs}"
+      run: npx eslint {staged_files}
+
+    - name: frontend-tests
+      run: npm test
+
+    - name: backend-tests
+      run: npm run test:backend
