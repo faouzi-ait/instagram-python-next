@@ -1,36 +1,107 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Instagram Project
 
-## Getting Started
+A starter web application with a Next.js frontend and a FastAPI backend.
 
-First, run the development server:
+## Features
+
+- **Frontend:** Next.js App Router, React, TypeScript, and Tailwind CSS.
+- **Backend:** FastAPI with a health-check endpoint at `GET /api/health`.
+- **Frontend-to-backend check:** The home page includes a button that calls `/api/health` and displays success or failure status.
+- **API documentation:** FastAPI provides Swagger UI at `/docs`, ReDoc at `/redoc`, and the OpenAPI schema at `/openapi.json`.
+- **Development API proxy:** Next.js rewrites `/api/*` requests to the FastAPI server. Set `FASTAPI_URL` to override the default `http://127.0.0.1:8000` destination.
+- **Cross-origin requests:** The backend currently allows requests from any origin. This is convenient for development; restrict CORS origins before deploying a production API.
+
+## Tooling
+
+- **Next.js 16** and **React 19** for the frontend.
+- **FastAPI** and **Uvicorn** for the Python API.
+- **TypeScript** for frontend type checking.
+- **Tailwind CSS** for styling.
+- **ESLint** for JavaScript/TypeScript linting.
+- **Prettier** for consistent formatting.
+- **Vitest**, **React Testing Library**, and **jsdom** for frontend tests.
+- **Python `unittest`** and FastAPI's `TestClient` for backend tests.
+- **Lefthook** for pre-commit formatting, lint, and test checks. Install its Git hook with `npx lefthook install` if it is not already installed.
+
+## Requirements
+
+- Node.js and npm.
+- Python 3.13 (or a compatible Python version).
+
+## Setup
+
+Install the frontend dependencies:
+
+```bash
+npm install
+```
+
+Create the backend virtual environment and install its requirements from the project root:
+
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install -r app/backend/requirements.txt
+```
+
+## Run locally
+
+Start the FastAPI backend in one terminal:
+
+```bash
+npm run backend
+```
+
+The backend listens on port `8000`. The script binds to `0.0.0.0`, making it reachable from other devices on the local network as well as from this computer. Do not expose it to untrusted networks without appropriate security controls.
+
+Start the Next.js frontend in another terminal:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000). The API documentation is available at [http://localhost:8000/docs](http://localhost:8000/docs).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+For a different backend URL, define `FASTAPI_URL` in the environment where Next.js is started, for example:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+FASTAPI_URL=http://127.0.0.1:8000 npm run dev
+```
 
-## Learn More
+## Available npm scripts
 
-To learn more about Next.js, take a look at the following resources:
+- `npm run dev` — Start the Next.js development server.
+- `npm run backend` — Start the FastAPI backend with Uvicorn reload enabled on port 8000.
+- `npm run build` — Create a production build of the Next.js app.
+- `npm run start` — Start the Next.js production server. Run `npm run build` first.
+- `npm run lint` — Run ESLint.
+- `npm run format` — Format project files with Prettier.
+- `npm run format:check` — Check formatting without modifying files.
+- `npm test` — Run the frontend Vitest suite.
+- `npm run test:backend` — Run backend `unittest` tests.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Tests and Git hooks
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Run the test suites independently or together:
 
-## Deploy on Vercel
+```bash
+npm test
+npm run test:backend
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+The configured Lefthook pre-commit jobs check staged files with Prettier and ESLint, then run both frontend and backend test suites. To run the hook manually without committing:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npx lefthook run pre-commit
+```
+
+## Project structure
+
+```text
+app/
+  __tests__/          Frontend page tests
+  backend/
+    main.py           FastAPI application and CORS configuration
+    routes/           API route handlers
+    tests/            Backend tests
+  page.tsx            Home page and backend health-check UI
+```
