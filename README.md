@@ -67,6 +67,12 @@ For a different backend URL, define `FASTAPI_URL` in the environment where Next.
 FASTAPI_URL=http://127.0.0.1:8000 npm run dev
 ```
 
+## Deploy the backend on Render
+
+The backend requires a persistent PostgreSQL database; do not use SQLite or a file in the web service's ephemeral filesystem for production. In Render, create a PostgreSQL database and a Python web service with the backend directory as its Root Directory (`app/backend`). Set the build command to `pip install -r requirements.txt` and the start command to `uvicorn main:app --host 0.0.0.0 --port $PORT`.
+
+In the web service's environment, set `DATABASE_URL` to the database's **Internal Database URL** (or link the PostgreSQL database using that exact environment-variable name). Also set `AUTH_ALLOWED_ORIGINS` to the exact deployed frontend origin, such as `https://your-frontend.onrender.com`—without a trailing path. Before serving traffic after schema changes, run `alembic upgrade head` from the backend Root Directory using Render's pre-deploy command.
+
 ## Available npm scripts
 
 - `npm run dev` — Start the Next.js development server.
