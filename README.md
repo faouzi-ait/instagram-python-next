@@ -9,7 +9,7 @@ A starter web application with a Next.js frontend and a FastAPI backend.
 - **Frontend-to-backend check:** The home page includes a button that calls `/api/health` and displays success or failure status.
 - **API documentation:** FastAPI provides Swagger UI at `/docs`, ReDoc at `/redoc`, and the OpenAPI schema at `/openapi.json`.
 - **Development API proxy:** Next.js rewrites `/api/*` requests to the FastAPI server. Set `FASTAPI_URL` to override the default `http://127.0.0.1:8000` destination.
-- **Cross-origin requests:** The backend currently allows requests from any origin. This is convenient for development; restrict CORS origins before deploying a production API.
+- **Cross-origin requests:** The backend only allows origins listed in the comma-separated `AUTH_ALLOWED_ORIGINS` environment variable.
 
 ## Tooling
 
@@ -20,7 +20,7 @@ A starter web application with a Next.js frontend and a FastAPI backend.
 - **ESLint** for JavaScript/TypeScript linting.
 - **Prettier** for consistent formatting.
 - **Vitest**, **React Testing Library**, and **jsdom** for frontend tests.
-- **Python `unittest`** and FastAPI's `TestClient` for backend tests.
+- **pytest** and FastAPI's `TestClient` for backend tests.
 - **Lefthook** for pre-commit formatting, lint, and test checks. Install its Git hook with `npx lefthook install` if it is not already installed.
 
 ## Requirements
@@ -77,7 +77,7 @@ FASTAPI_URL=http://127.0.0.1:8000 npm run dev
 - `npm run format` — Format project files with Prettier.
 - `npm run format:check` — Check formatting without modifying files.
 - `npm test` — Run the frontend Vitest suite.
-- `npm run test:backend` — Run backend `unittest` tests.
+- `npm run test:backend` — Run backend pytest tests.
 
 ## Tests and Git hooks
 

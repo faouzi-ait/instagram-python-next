@@ -5,13 +5,14 @@
   "scripts": {
     "dev": "next dev",
     "backend": ".venv/bin/python -m uvicorn main:app --app-dir app/backend --reload --host 0.0.0.0 --port 8000",
+    "dev:backend": "cd app/backend && ./.venv/bin/python -m uvicorn main:app --reload --port 8000",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run",
-    "test:backend": "PYTHONPATH=app/backend .venv/bin/python -m unittest discover -s app/backend/tests"
+    "test:backend": "PYTHONPATH=app/backend .venv/bin/python -m pytest app/backend/tests"
   },
   "dependencies": {
     "next": "16.4.5",
