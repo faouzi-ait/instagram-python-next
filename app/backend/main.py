@@ -2,15 +2,20 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+
+from rate_limit import limiter
+
 # ROUTES
 from routes.auth import router as auth_router
+from routes.posts import router as posts_router
 from routes.health import router as health_router
+from routes.comments import router as comments_router
 
 auth_allowed_origins = os.environ.get("AUTH_ALLOWED_ORIGINS")
 if not auth_allowed_origins:
-    raise RuntimeError(
-        "AUTH_ALLOWED_ORIGINS is required. Set it to the comma-separated frontend origin(s)."
-    )
+    raise RuntimeError("AUTH_ALLOWED_ORIGINS is required. Set it to the comma-separated frontend origin(s).")
 
 allowed_origins = [
     origin.strip()
@@ -20,6 +25,8 @@ allowed_origins = [
 
 app = FastAPI()
 
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
@@ -30,3 +37,5 @@ app.add_middleware(
 
 app.include_router(auth_router, prefix="/api")
 app.include_router(health_router, prefix="/api")
+app.include_router(posts_router, prefix="/api")
+app.include_router(comments_router, prefix="/api")

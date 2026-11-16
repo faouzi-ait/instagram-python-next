@@ -47,11 +47,7 @@ def require_trusted_origin(request: Request):
             detail="Request origin is not allowed.",
         )
 
-def get_current_user(
-    request: Request,
-    response: Response,
-    db: Session = Depends(get_db),
-) -> User:
+def get_current_user(request: Request, response: Response, db: Session = Depends(get_db)) -> User:
     token = request.cookies.get(COOKIE_NAME)
 
     if not token:

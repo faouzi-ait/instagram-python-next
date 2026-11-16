@@ -17,6 +17,7 @@ class User(Base):
     display_name: Mapped[str | None] = mapped_column(String(100))
     bio: Mapped[str | None] = mapped_column(Text)
     avatar_url: Mapped[str | None] = mapped_column(Text)
+    avatar_public_id: Mapped[str | None] = mapped_column(Text)
     website_url: Mapped[str | None] = mapped_column(Text)
 
     is_private: Mapped[bool] = mapped_column(
