@@ -84,6 +84,9 @@ In the web service's environment, set `DATABASE_URL` to the database's **Interna
 - `npm run format:check` — Check formatting without modifying files.
 - `npm test` — Run the frontend Vitest suite.
 - `npm run test:backend` — Run backend pytest tests.
+- `./.venv/bin/python -m ruff check .` - Check python lint issues
+- `./.venv/bin/python -m ruff format .` - Format Python code
+- `./.venv/bin/python -m ruff check . --fix` - Fix automatically python fixable issues
 
 ## Tests and Git hooks
 

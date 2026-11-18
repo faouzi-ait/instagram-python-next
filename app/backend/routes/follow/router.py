@@ -1,24 +1,29 @@
 import logging
 from typing import Annotated
 
-from fastapi import (APIRouter, Depends, HTTPException, Path, Request, Response)
+from fastapi import APIRouter, Depends, HTTPException, Path, Request, Response
 from sqlalchemy import delete, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from database import get_db
-from dependencies.auth import (get_current_user, require_trusted_origin)
+from dependencies.auth import get_current_user, require_trusted_origin
 from models.follow import Follow
 from models.users import User
-from schemas.follow import FollowResponse
 from rate_limit import limiter
+from schemas.follow import FollowResponse
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/users", tags=["Follows"],)
+router = APIRouter(
+    prefix="/users",
+    tags=["Follows"],
+)
+
 
 def get_follow_target(db: Session, user_id: int) -> User:
-    target = db.scalar(select(User)
+    target = db.scalar(
+        select(User)
         .where(User.id == user_id, User.is_active.is_(True))
         .with_for_update()
     )
@@ -26,7 +31,12 @@ def get_follow_target(db: Session, user_id: int) -> User:
         raise HTTPException(status_code=404, detail="User not found.")
     return target
 
-@router.put("/{user_id}/follow", response_model=FollowResponse, dependencies=[Depends(require_trusted_origin)])
+
+@router.put(
+    "/{user_id}/follow",
+    response_model=FollowResponse,
+    dependencies=[Depends(require_trusted_origin)],
+)
 @limiter.limit("30/minute")
 def follow_user(
     request: Request,
@@ -40,18 +50,25 @@ def follow_user(
 
     try:
         target = get_follow_target(db, user_id)
-        initial_status = ("pending" if target.is_private else "accepted")
+        initial_status = "pending" if target.is_private else "accepted"
 
-        statement = (insert(Follow)
+        statement = (
+            insert(Follow)
             .values(follower_id=user.id, following_id=target.id, status=initial_status)
-            .on_conflict_do_nothing(index_elements=[Follow.follower_id, Follow.following_id])
+            .on_conflict_do_nothing(
+                index_elements=[Follow.follower_id, Follow.following_id]
+            )
         )
 
         db.execute(statement)
 
         # Return the existing status if this relationship was already present.
         status = db.scalar(
-            select(Follow.status).where(Follow.follower_id == user.id, Follow.following_id == target.id, ))
+            select(Follow.status).where(
+                Follow.follower_id == user.id,
+                Follow.following_id == target.id,
+            )
+        )
 
         result = FollowResponse(user_id=target.id, status=status)
         db.commit()
@@ -60,12 +77,20 @@ def follow_user(
         db.rollback()
         logger.exception("Could not confirm follow of user %s", user_id)
 
-        raise HTTPException(status_code=503, detail="Could not confirm the follow request.") from error
+        raise HTTPException(
+            status_code=503, detail="Could not confirm the follow request."
+        ) from error
 
     response.headers["Cache-Control"] = "no-store"
     return result
 
-@router.delete("/{user_id}/follow", status_code=204, response_class=Response, dependencies=[Depends(require_trusted_origin)])
+
+@router.delete(
+    "/{user_id}/follow",
+    status_code=204,
+    response_class=Response,
+    dependencies=[Depends(require_trusted_origin)],
+)
 @limiter.limit("30/minute")
 def unfollow_user(
     request: Request,
@@ -84,7 +109,9 @@ def unfollow_user(
         get_follow_target(db, user_id)
 
         db.execute(
-            delete(Follow).where(Follow.follower_id == user.id, Follow.following_id == user_id)
+            delete(Follow).where(
+                Follow.follower_id == user.id, Follow.following_id == user_id
+            )
         )
 
         db.commit()
@@ -93,14 +120,22 @@ def unfollow_user(
         db.rollback()
         logger.exception("Could not confirm unfollow of user %s", user_id)
 
-        raise HTTPException(status_code=503, detail="Could not confirm the unfollow request.") from error
+        raise HTTPException(
+            status_code=503, detail="Could not confirm the unfollow request."
+        ) from error
 
     response.status_code = 204
     response.headers["Cache-Control"] = "no-store"
 
     return response
 
-@router.put("/me/follow-requests/{follower_id}/accept", status_code=204, response_class=Response, dependencies=[Depends(require_trusted_origin)])
+
+@router.put(
+    "/me/follow-requests/{follower_id}/accept",
+    status_code=204,
+    response_class=Response,
+    dependencies=[Depends(require_trusted_origin)],
+)
 @limiter.limit("30/minute")
 def accept_follow_request(
     request: Request,
@@ -113,7 +148,8 @@ def accept_follow_request(
         # Lock the receiving account, as follow/unfollow already do.
         get_follow_target(db, user.id)
 
-        follow = db.scalar(select(Follow)
+        follow = db.scalar(
+            select(Follow)
             .where(Follow.follower_id == follower_id, Follow.following_id == user.id)
             .with_for_update()
         )
@@ -127,16 +163,28 @@ def accept_follow_request(
 
     except SQLAlchemyError as error:
         db.rollback()
-        logger.exception("Could not confirm acceptance of follow request " "from %s to %s", follower_id, user.id)
+        logger.exception(
+            "Could not confirm acceptance of follow request from %s to %s",
+            follower_id,
+            user.id,
+        )
 
-        raise HTTPException(status_code=503, detail="Could not confirm acceptance of the request.") from error
+        raise HTTPException(
+            status_code=503, detail="Could not confirm acceptance of the request."
+        ) from error
 
     response.status_code = 204
     response.headers["Cache-Control"] = "no-store"
 
     return response
 
-@router.delete("/me/follow-requests/{follower_id}", status_code=204, response_class=Response, dependencies=[Depends(require_trusted_origin)])
+
+@router.delete(
+    "/me/follow-requests/{follower_id}",
+    status_code=204,
+    response_class=Response,
+    dependencies=[Depends(require_trusted_origin)],
+)
 @limiter.limit("30/minute")
 def reject_follow_request(
     request: Request,
@@ -148,14 +196,17 @@ def reject_follow_request(
     try:
         get_follow_target(db, user.id)
 
-        follow = db.scalar(select(Follow)
+        follow = db.scalar(
+            select(Follow)
             .where(Follow.follower_id == follower_id, Follow.following_id == user.id)
             .with_for_update()
         )
 
         if follow is not None:
             if follow.status != "pending":
-                raise HTTPException(status_code=409, detail="This user is already an accepted follower.")
+                raise HTTPException(
+                    status_code=409, detail="This user is already an accepted follower."
+                )
             db.delete(follow)
 
         # Already rejected or cancelled requests also return 204.
@@ -163,8 +214,14 @@ def reject_follow_request(
 
     except SQLAlchemyError as error:
         db.rollback()
-        logger.exception("Could not confirm rejection of follow request " "from %s to %s", follower_id, user.id)
-        raise HTTPException(status_code=503, detail="Could not confirm rejection of the request.") from error
+        logger.exception(
+            "Could not confirm rejection of follow request from %s to %s",
+            follower_id,
+            user.id,
+        )
+        raise HTTPException(
+            status_code=503, detail="Could not confirm rejection of the request."
+        ) from error
 
     response.status_code = 204
     response.headers["Cache-Control"] = "no-store"

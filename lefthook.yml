@@ -8,6 +8,14 @@ pre-commit:
       glob: "*.{js,jsx,ts,tsx,mjs,cjs}"
       run: npx eslint {staged_files}
 
+    - name: python-lint
+      glob: "*.py"
+      run: app/backend/.venv/bin/python -m ruff check {staged_files}
+
+    - name: python-format
+      glob: "*.py"
+      run: app/backend/.venv/bin/python -m ruff format --check {staged_files}
+
     - name: frontend-tests
       run: npm test
 

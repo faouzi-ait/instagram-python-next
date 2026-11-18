@@ -7,6 +7,7 @@ from pydantic import ValidationError
 from schemas.auth import LoginRequest, RegisterRequest
 from schemas.user import UserResponse
 
+
 def registration_data(**changes):
     return {
         "email": "Alex@example.com",
@@ -15,6 +16,7 @@ def registration_data(**changes):
         **changes,
     }
 
+
 def test_registration_normalizes_email_and_username():
     request = RegisterRequest(**registration_data())
 
@@ -22,6 +24,7 @@ def test_registration_normalizes_email_and_username():
     assert request.username == "alex"
     assert request.display_name is None
     assert request.password == "A sufficiently long password!"
+
 
 @pytest.mark.parametrize(
     "changes",
@@ -39,6 +42,7 @@ def test_registration_rejects_invalid_input(changes):
     with pytest.raises(ValidationError):
         RegisterRequest(**registration_data(**changes))
 
+
 def test_login_preserves_password_and_normalizes_email():
     request = LoginRequest(
         email="Alex@example.com",
@@ -48,9 +52,11 @@ def test_login_preserves_password_and_normalizes_email():
     assert request.email == "alex@example.com"
     assert request.password == " Keep My Spaces "
 
+
 def test_login_rejects_missing_password():
     with pytest.raises(ValidationError):
         LoginRequest(email="alex@example.com")
+
 
 def test_user_response_reads_attributes_and_excludes_password_hash():
     now = datetime.now(timezone.utc)

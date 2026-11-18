@@ -1,9 +1,8 @@
-import os
 import hashlib
-
+import os
 from datetime import datetime, timedelta, timezone
-from fastapi import Depends, HTTPException, Request, Response
 
+from fastapi import Depends, HTTPException, Request, Response
 from sqlalchemy import update
 from sqlalchemy.orm import Session
 
@@ -16,8 +15,10 @@ IDLE_TIMEOUT = timedelta(hours=24)
 MAX_LIFETIME = timedelta(days=7)
 RENEWAL_THRESHOLD = timedelta(hours=12)
 
+
 def hash_session_token(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
 
 def set_session_cookie(
     response: Response,
@@ -34,6 +35,7 @@ def set_session_cookie(
         path="/",
     )
 
+
 def require_trusted_origin(request: Request):
     allowed_origins = {
         origin.strip()
@@ -47,15 +49,22 @@ def require_trusted_origin(request: Request):
             detail="Request origin is not allowed.",
         )
 
-def get_current_user(request: Request, response: Response, db: Session = Depends(get_db)) -> User:
+
+def get_current_user(
+    request: Request, response: Response, db: Session = Depends(get_db)
+) -> User:
     token = request.cookies.get(COOKIE_NAME)
 
     if not token:
         raise HTTPException(status_code=401, detail="Please sign in.")
 
-    session = db.query(UserSession).filter_by(
-        token_hash=hash_session_token(token),
-    ).first()
+    session = (
+        db.query(UserSession)
+        .filter_by(
+            token_hash=hash_session_token(token),
+        )
+        .first()
+    )
 
     now = datetime.now(timezone.utc)
 

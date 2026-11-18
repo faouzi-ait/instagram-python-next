@@ -8,6 +8,7 @@ os.environ["DATABASE_URL"] = "sqlite://"
 
 from main import app
 
+
 class HealthRouteTests(unittest.TestCase):
     def setUp(self) -> None:
         self.client = TestClient(app)
@@ -27,6 +28,7 @@ class HealthRouteTests(unittest.TestCase):
             response.headers["access-control-allow-origin"],
             "https://example.com",
         )
+
 
 if __name__ == "__main__":
     unittest.main()

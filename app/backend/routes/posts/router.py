@@ -13,25 +13,26 @@ from fastapi import (
     Response,
     UploadFile,
 )
-
-from sqlalchemy import or_, select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
-from sqlalchemy import and_, or_, select
 
 from database import get_db
-from models.post import Post
-from models.users import User
+from dependencies.auth import COOKIE_NAME, get_current_user, require_trusted_origin
 from models.follow import Follow
 from models.image_cleanup import ImageCleanupTask
-from schemas.post import PostCreate, PostResponse, PostVisibility, PostUpdate
-from dependencies.auth import (COOKIE_NAME, get_current_user, require_trusted_origin)
-from services.images import (delete_post_image, get_post_image_url, upload_post_image)
+from models.post import Post
+from models.users import User
+from schemas.post import PostCreate, PostResponse, PostUpdate, PostVisibility
+from services.images import delete_post_image, get_post_image_url, upload_post_image
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/posts", tags=["Posts"])
 
-def get_optional_user(request: Request, response: Response, db: Annotated[Session, Depends(get_db)]) -> User | None:
+
+def get_optional_user(
+    request: Request, response: Response, db: Annotated[Session, Depends(get_db)]
+) -> User | None:
     if not request.cookies.get(COOKIE_NAME):
         return None
 
@@ -40,6 +41,7 @@ def get_optional_user(request: Request, response: Response, db: Annotated[Sessio
         response=response,
         db=db,
     )
+
 
 def visible_posts_condition(user: User | None):
     author_is_public = (
@@ -54,12 +56,18 @@ def visible_posts_condition(user: User | None):
     if user is None:
         return publicly_visible
 
-    accepted_follower = (select(Follow.follower_id)
-        .where(Follow.follower_id == user.id, Follow.following_id == Post.user_id, Follow.status == "accepted")
+    accepted_follower = (
+        select(Follow.follower_id)
+        .where(
+            Follow.follower_id == user.id,
+            Follow.following_id == Post.user_id,
+            Follow.status == "accepted",
+        )
         .correlate(Post)
         .exists()
     )
     return or_(Post.user_id == user.id, publicly_visible, accepted_follower)
+
 
 def build_post_response(post: Post) -> PostResponse:
     return PostResponse(
@@ -74,7 +82,13 @@ def build_post_response(post: Post) -> PostResponse:
         updated_at=post.updated_at,
     )
 
-@router.post("", response_model=PostResponse, status_code=201, dependencies=[Depends(require_trusted_origin)])
+
+@router.post(
+    "",
+    response_model=PostResponse,
+    status_code=201,
+    dependencies=[Depends(require_trusted_origin)],
+)
 def create_post(
     response: Response,
     image: Annotated[UploadFile, File()],
@@ -135,6 +149,7 @@ def create_post(
     response.headers["Cache-Control"] = "no-store"
     return result
 
+
 @router.get("", response_model=list[PostResponse])
 def list_posts(
     response: Response,
@@ -155,6 +170,7 @@ def list_posts(
 
     response.headers["Cache-Control"] = "no-store"
     return [build_post_response(post) for post in posts]
+
 
 @router.get("/{post_id}", response_model=PostResponse)
 def get_post(
@@ -179,7 +195,12 @@ def get_post(
     response.headers["Cache-Control"] = "no-store"
     return build_post_response(post)
 
-@router.patch("/{post_id}", response_model=PostResponse, dependencies=[Depends(require_trusted_origin)])
+
+@router.patch(
+    "/{post_id}",
+    response_model=PostResponse,
+    dependencies=[Depends(require_trusted_origin)],
+)
 def update_post(
     response: Response,
     post_id: Annotated[int, Path(gt=0)],
@@ -230,7 +251,13 @@ def update_post(
     response.headers["Cache-Control"] = "no-store"
     return result
 
-@router.delete("/{post_id}", status_code=204, response_class=Response, dependencies=[Depends(require_trusted_origin)])
+
+@router.delete(
+    "/{post_id}",
+    status_code=204,
+    response_class=Response,
+    dependencies=[Depends(require_trusted_origin)],
+)
 def delete_post(
     response: Response,
     post_id: Annotated[int, Path(gt=0)],
@@ -247,7 +274,9 @@ def delete_post(
         raise HTTPException(status_code=404, detail="Post not found.")
 
     if post.user_id != user.id:
-        raise HTTPException(status_code=403, detail="You can only delete your own posts.")
+        raise HTTPException(
+            status_code=403, detail="You can only delete your own posts."
+        )
 
     try:
         db.add(ImageCleanupTask(image_public_id=post.image_public_id))
@@ -257,7 +286,9 @@ def delete_post(
     except SQLAlchemyError as error:
         db.rollback()
         logger.exception("Could not confirm deletion of post %s", post_id)
-        raise HTTPException(status_code=503, detail="Could not confirm that the post was deleted.") from error
+        raise HTTPException(
+            status_code=503, detail="Could not confirm that the post was deleted."
+        ) from error
 
     response.status_code = 204
     response.headers["Cache-Control"] = "no-store"

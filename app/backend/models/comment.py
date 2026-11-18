@@ -1,10 +1,10 @@
 from datetime import datetime
-from schemas.comment import CommentCreate, CommentResponse, CommentUpdate
 
 from sqlalchemy import CheckConstraint, DateTime, ForeignKey, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from database import Base
+
 
 class Comment(Base):
     __tablename__ = "comments"

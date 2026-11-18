@@ -5,6 +5,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from database import Base
 
+
 class UserSession(Base):
     __tablename__ = "user_sessions"
 

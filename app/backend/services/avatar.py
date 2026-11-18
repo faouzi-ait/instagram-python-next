@@ -1,16 +1,18 @@
-from uuid import uuid4
-import warnings
 import io
+import warnings
+from uuid import uuid4
 
+import cloudinary.uploader
 from cloudinary.exceptions import Error as CloudinaryError
 from fastapi import HTTPException, UploadFile
 from PIL import Image, UnidentifiedImageError
-import cloudinary.uploader
+
 import cloudinary_config  # noqa: F401
 
 MAX_FILE_SIZE = 10 * 1024 * 1024
 MAX_PIXELS = 20_000_000
 ALLOWED_FORMATS = {"JPEG", "PNG", "WEBP"}
+
 
 def upload_avatar(file: UploadFile, user_id: int) -> dict[str, str]:
     file.file.seek(0)
@@ -81,6 +83,7 @@ def upload_avatar(file: UploadFile, user_id: int) -> dict[str, str]:
         "avatar_public_id": result["public_id"],
         "avatar_url": result["secure_url"],
     }
+
 
 def delete_avatar(public_id: str) -> None:
     try:

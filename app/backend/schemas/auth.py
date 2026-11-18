@@ -1,5 +1,6 @@
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
+
 class RegisterRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -30,6 +31,7 @@ class RegisterRequest(BaseModel):
         if len(value.encode("utf-8")) > 72:
             raise ValueError("Password must be at most 72 UTF-8 bytes.")
         return value
+
 
 class LoginRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")

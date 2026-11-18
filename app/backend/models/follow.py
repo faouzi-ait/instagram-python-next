@@ -11,6 +11,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from database import Base
 
+
 class Follow(Base):
     __tablename__ = "follows"
 
