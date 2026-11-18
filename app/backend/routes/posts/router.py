@@ -13,24 +13,18 @@ from fastapi import (
     Response,
     UploadFile,
 )
+
 from sqlalchemy import or_, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from database import get_db
-from dependencies.auth import (
-    COOKIE_NAME,
-    get_current_user,
-    require_trusted_origin,
-)
 from models.post import Post
 from models.users import User
-from schemas.post import PostCreate, PostResponse, PostVisibility
-from services.images import (
-    delete_post_image,
-    get_post_image_url,
-    upload_post_image,
-)
+from models.image_cleanup import ImageCleanupTask
+from schemas.post import PostCreate, PostResponse, PostVisibility, PostUpdate
+from dependencies.auth import (COOKIE_NAME, get_current_user, require_trusted_origin)
+from services.images import (delete_post_image, get_post_image_url, upload_post_image)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/posts", tags=["Posts"])
@@ -171,3 +165,88 @@ def get_post(
 
     response.headers["Cache-Control"] = "no-store"
     return build_post_response(post)
+
+@router.patch("/{post_id}", response_model=PostResponse, dependencies=[Depends(require_trusted_origin)])
+def update_post(
+    response: Response,
+    post_id: Annotated[int, Path(gt=0)],
+    data: PostUpdate,
+    user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+):
+    post = db.scalar(
+        select(Post)
+        .where(
+            Post.id == post_id,
+            visible_posts_condition(user),
+        )
+        .with_for_update()
+    )
+
+    if post is None:
+        raise HTTPException(status_code=404, detail="Post not found.")
+
+    if post.user_id != user.id:
+        raise HTTPException(
+            status_code=403,
+            detail="You can only edit your own posts.",
+        )
+
+    changes = data.model_dump(exclude_unset=True)
+
+    try:
+        for field, value in changes.items():
+            setattr(post, field, value)
+
+        db.flush()
+        db.refresh(post)
+
+        result = build_post_response(post)
+
+        db.commit()
+
+    except SQLAlchemyError as error:
+        db.rollback()
+        logger.exception("Failed to update post %s", post_id)
+
+        raise HTTPException(
+            status_code=503,
+            detail="Could not confirm that the post was updated.",
+        ) from error
+
+    response.headers["Cache-Control"] = "no-store"
+    return result
+
+@router.delete("/{post_id}", status_code=204, response_class=Response, dependencies=[Depends(require_trusted_origin)])
+def delete_post(
+    response: Response,
+    post_id: Annotated[int, Path(gt=0)],
+    user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+):
+    post = db.scalar(
+        select(Post)
+        .where(Post.id == post_id, visible_posts_condition(user))
+        .with_for_update()
+    )
+
+    if post is None:
+        raise HTTPException(status_code=404, detail="Post not found.")
+
+    if post.user_id != user.id:
+        raise HTTPException(status_code=403, detail="You can only delete your own posts.")
+
+    try:
+        db.add(ImageCleanupTask(image_public_id=post.image_public_id))
+        db.delete(post)
+        db.commit()
+
+    except SQLAlchemyError as error:
+        db.rollback()
+        logger.exception("Could not confirm deletion of post %s", post_id)
+        raise HTTPException(status_code=503, detail="Could not confirm that the post was deleted.") from error
+
+    response.status_code = 204
+    response.headers["Cache-Control"] = "no-store"
+
+    return response

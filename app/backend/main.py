@@ -10,6 +10,7 @@ from rate_limit import limiter
 # ROUTES
 from routes.auth import router as auth_router
 from routes.posts import router as posts_router
+from routes.likes import router as likes_router
 from routes.health import router as health_router
 from routes.comments import router as comments_router
 
@@ -39,3 +40,5 @@ app.include_router(auth_router, prefix="/api")
 app.include_router(health_router, prefix="/api")
 app.include_router(posts_router, prefix="/api")
 app.include_router(comments_router, prefix="/api")
+app.include_router(likes_router, prefix="/api")
+
