@@ -11,17 +11,12 @@ from models.comment import Comment
 from models.post import Post
 from models.users import User
 from schemas.comment import CommentCreate, CommentResponse, CommentUpdate
-from routes.posts import get_optional_user
+from routes.posts import get_optional_user, visible_posts_condition
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/comments", tags=["Comments"])
 
-@router.post(
-    "/{post_id}/comments",
-    response_model=CommentResponse,
-    status_code=201,
-    dependencies=[Depends(require_trusted_origin)],
-)
+@router.post("/{post_id}/comments", response_model=CommentResponse, status_code=201, dependencies=[Depends(require_trusted_origin)])
 def create_comment(
     response: Response,
     post_id: Annotated[int, Path(gt=0)],
@@ -29,16 +24,8 @@ def create_comment(
     user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ):
-    # Lock the post while checking visibility and saving the comment.
-    post = db.scalar(
-        select(Post)
-        .where(
-            Post.id == post_id,
-            or_(
-                Post.visibility == "public",
-                Post.user_id == user.id,
-            ),
-        )
+    post = db.scalar(select(Post)
+        .where(Post.id == post_id, visible_posts_condition(user))
         .with_for_update()
     )
 
@@ -53,17 +40,13 @@ def create_comment(
         db.refresh(comment)
 
         result = CommentResponse.model_validate(comment)
-
         db.commit()
 
     except SQLAlchemyError as error:
         db.rollback()
         logger.exception("Failed to save comment on post %s", post_id)
 
-        raise HTTPException(
-            status_code=503,
-            detail="Could not confirm that the comment was saved.",
-        ) from error
+        raise HTTPException(status_code=503, detail="Could not confirm that the comment was saved.") from error
 
     response.headers["Cache-Control"] = "no-store"
     return result
@@ -77,20 +60,7 @@ def list_comments(
     limit: Annotated[int, Query(ge=1, le=50)] = 20,
     offset: Annotated[int, Query(ge=0)] = 0,
 ):
-    visibility_condition = Post.visibility == "public"
-
-    if user is not None:
-        visibility_condition = or_(
-            Post.visibility == "public",
-            Post.user_id == user.id,
-        )
-
-    post = db.scalar(
-        select(Post).where(
-            Post.id == post_id,
-            visibility_condition,
-        )
-    )
+    post = db.scalar(select(Post).where(Post.id == post_id, visible_posts_condition(user)))
 
     if post is None:
         raise HTTPException(status_code=404, detail="Post not found.")
@@ -104,7 +74,6 @@ def list_comments(
     )
 
     comments = db.scalars(statement).all()
-
     response.headers["Cache-Control"] = "no-store"
     return comments
 

@@ -13,6 +13,7 @@ from routes.posts import router as posts_router
 from routes.likes import router as likes_router
 from routes.health import router as health_router
 from routes.comments import router as comments_router
+from routes.follow import router as follows_router
 
 auth_allowed_origins = os.environ.get("AUTH_ALLOWED_ORIGINS")
 if not auth_allowed_origins:
@@ -41,4 +42,5 @@ app.include_router(health_router, prefix="/api")
 app.include_router(posts_router, prefix="/api")
 app.include_router(comments_router, prefix="/api")
 app.include_router(likes_router, prefix="/api")
+app.include_router(follows_router, prefix="/api")
 

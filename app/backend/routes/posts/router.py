@@ -17,10 +17,12 @@ from fastapi import (
 from sqlalchemy import or_, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
+from sqlalchemy import and_, or_, select
 
 from database import get_db
 from models.post import Post
 from models.users import User
+from models.follow import Follow
 from models.image_cleanup import ImageCleanupTask
 from schemas.post import PostCreate, PostResponse, PostVisibility, PostUpdate
 from dependencies.auth import (COOKIE_NAME, get_current_user, require_trusted_origin)
@@ -40,13 +42,24 @@ def get_optional_user(request: Request, response: Response, db: Annotated[Sessio
     )
 
 def visible_posts_condition(user: User | None):
-    if user is None:
-        return Post.visibility == "public"
-
-    return or_(
-        Post.visibility == "public",
-        Post.user_id == user.id,
+    author_is_public = (
+        select(User.id)
+        .where(User.id == Post.user_id, User.is_private.is_(False))
+        .correlate(Post)
+        .exists()
     )
+
+    publicly_visible = and_(Post.visibility == "public", author_is_public)
+
+    if user is None:
+        return publicly_visible
+
+    accepted_follower = (select(Follow.follower_id)
+        .where(Follow.follower_id == user.id, Follow.following_id == Post.user_id, Follow.status == "accepted")
+        .correlate(Post)
+        .exists()
+    )
+    return or_(Post.user_id == user.id, publicly_visible, accepted_follower)
 
 def build_post_response(post: Post) -> PostResponse:
     return PostResponse(
