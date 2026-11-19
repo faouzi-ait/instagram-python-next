@@ -15,6 +15,7 @@ MAX_FILE_SIZE = 10 * 1024 * 1024
 MAX_PIXELS = 20_000_000
 ALLOWED_FORMATS = {"JPEG", "PNG", "WEBP"}
 
+
 def upload_post_image(file: UploadFile, user_id: int) -> dict:
     file.file.seek(0)
     contents = file.file.read(MAX_FILE_SIZE + 1)

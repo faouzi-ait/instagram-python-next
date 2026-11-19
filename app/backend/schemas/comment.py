@@ -12,13 +12,16 @@ CommentContent = Annotated[
     ),
 ]
 
+
 class CommentCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
     content: CommentContent
 
+
 class CommentUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
     content: CommentContent
+
 
 class CommentResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)

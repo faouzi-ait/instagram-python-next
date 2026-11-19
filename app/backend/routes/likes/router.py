@@ -26,13 +26,20 @@ from schemas.post_like import PostLikesResponse
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/posts", tags=["Likes"])
 
+
 def accessible_post_query(post_id: int, user: User | None):
     return select(Post).where(
         Post.id == post_id,
         visible_posts_condition(user),
     )
 
-@router.put("/{post_id}/like", status_code=204, response_class=Response, dependencies=[Depends(require_trusted_origin)])
+
+@router.put(
+    "/{post_id}/like",
+    status_code=204,
+    response_class=Response,
+    dependencies=[Depends(require_trusted_origin)],
+)
 @limiter.limit("60/minute")
 def like_post(
     request: Request,
@@ -69,6 +76,7 @@ def like_post(
     response.headers["Cache-Control"] = "no-store"
     return response
 
+
 @router.get("/{post_id}/likes", response_model=PostLikesResponse)
 def get_post_likes(
     response: Response,
@@ -82,18 +90,19 @@ def get_post_likes(
         raise HTTPException(status_code=404, detail="Post not found.")
 
     likes_count = db.scalar(
-        select(func.count())
-        .select_from(PostLike)
-        .where(PostLike.post_id == post_id)
+        select(func.count()).select_from(PostLike).where(PostLike.post_id == post_id)
     )
 
     liked_by_me = False
 
     if user is not None:
-        liked_by_me = db.get(
-            PostLike,
-            (post_id, user.id),
-        ) is not None
+        liked_by_me = (
+            db.get(
+                PostLike,
+                (post_id, user.id),
+            )
+            is not None
+        )
 
     response.headers["Cache-Control"] = "no-store"
 
@@ -103,7 +112,13 @@ def get_post_likes(
         liked_by_me=liked_by_me,
     )
 
-@router.delete("/{post_id}/like", status_code=204, response_class=Response, dependencies=[Depends(require_trusted_origin)])
+
+@router.delete(
+    "/{post_id}/like",
+    status_code=204,
+    response_class=Response,
+    dependencies=[Depends(require_trusted_origin)],
+)
 @limiter.limit("60/minute")
 def unlike_post(
     request: Request,
@@ -112,9 +127,7 @@ def unlike_post(
     user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ):
-    post = db.scalar(
-        accessible_post_query(post_id, user).with_for_update()
-    )
+    post = db.scalar(accessible_post_query(post_id, user).with_for_update())
 
     if post is None:
         raise HTTPException(status_code=404, detail="Post not found.")

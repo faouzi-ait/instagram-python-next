@@ -12,6 +12,7 @@ from services.images import delete_post_image
 
 logger = logging.getLogger(__name__)
 
+
 def process_image_cleanup(limit: int = 50) -> None:
     deleted = 0
     failed = 0
@@ -22,7 +23,7 @@ def process_image_cleanup(limit: int = 50) -> None:
                 task = db.scalar(
                     select(ImageCleanupTask)
                     .where(ImageCleanupTask.next_attempt_at <= func.now())
-                    .order_by(ImageCleanupTask.next_attempt_at,ImageCleanupTask.id)
+                    .order_by(ImageCleanupTask.next_attempt_at, ImageCleanupTask.id)
                     .with_for_update(skip_locked=True)
                     .limit(1)
                 )
@@ -39,8 +40,14 @@ def process_image_cleanup(limit: int = 50) -> None:
                     # with a maximum delay of 60 minutes. Retry after 1, 2, 4, 8... minutes,
                     delay_minutes = min(2 ** min(task.attempts - 1, 6), 60)
 
-                    task.next_attempt_at = (datetime.now(timezone.utc) + timedelta(minutes=delay_minutes))
-                    logger.exception("Image cleanup failed for %s; attempt %s", task.image_public_id, task.attempts)
+                    task.next_attempt_at = datetime.now(timezone.utc) + timedelta(
+                        minutes=delay_minutes
+                    )
+                    logger.exception(
+                        "Image cleanup failed for %s; attempt %s",
+                        task.image_public_id,
+                        task.attempts,
+                    )
                     failed += 1
 
                 else:
@@ -48,7 +55,8 @@ def process_image_cleanup(limit: int = 50) -> None:
                     db.delete(task)
                     deleted += 1
 
-    logger.info( "Cleanup finished: %s deleted, %s failed", deleted, failed)
+    logger.info("Cleanup finished: %s deleted, %s failed", deleted, failed)
+
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")

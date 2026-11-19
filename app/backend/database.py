@@ -25,8 +25,10 @@ engine = create_engine(
     pool_pre_ping=True,
 )
 
+
 class Base(DeclarativeBase):
     pass
+
 
 def get_db():
     with Session(engine) as session:
